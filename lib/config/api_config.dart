@@ -7,6 +7,7 @@ class ApiConfig {
   // API endpoints
   static const String uploadEndpoint = '/upload-image';
   static const String statusEndpoint = '/status'; // For checking processing status
+  static const String chatExpenseEndpoint = '/api/v1/process-expense-message'; // Chat expense processing
   
   // Request timeout
   static const Duration requestTimeout = Duration(seconds: 30);

@@ -4,6 +4,7 @@ import '../models/expense.dart';
 import '../services/expense_service.dart';
 import 'add_expense_screen.dart';
 import 'expense_list_screen.dart';
+import 'chat_expense_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -83,6 +84,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => const ExpenseListScreen(),
+      ),
+    ).then((_) => _loadDashboardData());
+  }
+
+  void _navigateToChatExpense() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ChatExpenseScreen(),
       ),
     ).then((_) => _loadDashboardData());
   }
@@ -312,69 +322,128 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                     
                     // Quick Actions
-                    Row(
+                    Column(
                       children: [
-                        Expanded(
-                          child: Card(
-                            elevation: 4,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: InkWell(
-                              onTap: _navigateToAddExpense,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      Icons.add_circle,
-                                      size: 40,
-                                      color: Colors.green[600],
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Card(
+                                elevation: 4,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: InkWell(
+                                  onTap: _navigateToAddExpense,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.add_circle,
+                                          size: 40,
+                                          color: Colors.green[600],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Add Expense',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'Add Expense',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Card(
-                            elevation: 4,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: InkWell(
-                              onTap: _navigateToExpenseList,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      Icons.list_alt,
-                                      size: 40,
-                                      color: Colors.blue[600],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'View All',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Card(
+                                elevation: 4,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
+                                child: InkWell(
+                                  onTap: _navigateToExpenseList,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.list_alt,
+                                          size: 40,
+                                          color: Colors.blue[600],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'View All',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Chat Expense Card - Full Width
+                        Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: InkWell(
+                            onTap: _navigateToChatExpense,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: LinearGradient(
+                                  colors: [Colors.purple[400]!, Colors.purple[600]!],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.chat_bubble_outline,
+                                    size: 32,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Chat to Add Expense',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Tell me your expenses naturally!',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.white.withOpacity(0.9),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -579,9 +648,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToAddExpense,
-        backgroundColor: Colors.blue[600],
-        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: _navigateToChatExpense,
+        backgroundColor: Colors.purple[600],
+        child: const Icon(Icons.chat, color: Colors.white),
+        tooltip: 'Chat to Add Expense',
       ),
     );
   }
