@@ -14,7 +14,7 @@ dependencies:
   shared_preferences:  
   intl:
   http: 
-  supabase_flutter:
+ 
  
 
 dev_dependencies:

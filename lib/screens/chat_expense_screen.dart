@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../models/expense.dart';
 import '../services/expense_service.dart';
 import '../services/chat_expense_service.dart';
+import '../services/image_extract_service.dart';
 
 class ChatExpenseScreen extends StatefulWidget {
   const ChatExpenseScreen({super.key});
@@ -15,6 +18,7 @@ class _ChatExpenseScreenState extends State<ChatExpenseScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
+  final ImagePicker _imagePicker = ImagePicker();
   bool _isLoading = false;
 
   @override
@@ -26,10 +30,14 @@ class _ChatExpenseScreenState extends State<ChatExpenseScreen> {
   void _addWelcomeMessage() {
     _messages.add(ChatMessage(
       text: "Hi! Main aapka expense assistant hun. Aap mujhse keh sakte hain:\n\n"
+          "📝 Text Messages:\n"
           "• 'Maine 500 rupees khana pe kharch kiye'\n"
           "• 'Transport mein 200 rupees gaye'\n"
           "• 'Shopping ke liye 1500 spend kiye'\n"
           "• 'Medical bill 800 rupees ka tha'\n\n"
+          "📸 Image Upload:\n"
+          "• Bill/receipt ki photo upload kariye\n"
+          "• Main automatically text extract kar dunga\n\n"
           "Main automatically amount, category aur description extract kar dunga!",
       isUser: false,
       timestamp: DateTime.now(),
@@ -112,6 +120,139 @@ class _ChatExpenseScreenState extends State<ChatExpenseScreen> {
     _scrollToBottom();
   }
 
+  void _pickAndUploadImage() async {
+    try {
+      // Show image source selection dialog
+      final ImageSource? source = await showDialog<ImageSource>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Select Image Source'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.camera_alt),
+                  title: const Text('Camera'),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library),
+                  title: const Text('Gallery'),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      if (source == null) return;
+
+      // Pick image
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+
+      // Add image message to chat
+      setState(() {
+        _messages.add(ChatMessage(
+          text: "📸 Image uploaded",
+          isUser: true,
+          timestamp: DateTime.now(),
+          imagePath: pickedFile.path,
+        ));
+        _isLoading = true;
+      });
+
+      _scrollToBottom();
+
+      // Process image using optimized endpoint
+      final imageFile = File(pickedFile.path);
+      print('🎯 Chat: Starting image extraction for file: ${imageFile.path}');
+      print('🎯 Chat: File size: ${await imageFile.length()} bytes');
+      final result = await ImageExtractService.extractAndProcessExpense(imageFile);
+      print('🎯 Chat: Extraction result: $result');
+
+      if (result != null && result['success'] == true) {
+        final expenseData = result['expense'] as Map<String, dynamic>?;
+
+        if (expenseData != null) {
+          // Create expense from extracted data
+          final expense = Expense(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            amount: (expenseData['amount'] as num).toDouble(),
+            category: expenseData['category'] ?? 'Other',
+            name: expenseData['description'] ?? 'Expense from Image',
+            mode: expenseData['mode'] ?? 'Cash',
+            date: DateTime.now(),
+            imagePath: pickedFile.path,
+            billNo: expenseData['bill_no'],
+          );
+
+          // Save expense to local storage
+          await ExpenseService.addExpense(expense);
+
+          // Add success message
+          setState(() {
+            _messages.add(ChatMessage(
+              text: "✅ Image processed & saved locally!\n\n"
+                  "💰 Expense Details:\n"
+                  "Amount: ₹${expense.amount.toStringAsFixed(2)}\n"
+                  "Category: ${expense.category}\n"
+                  "Name: ${expense.name}\n"
+                  "Mode: ${expense.mode}\n"
+                  "${expense.billNo != null ? 'Bill No: ${expense.billNo}\n' : ''}"
+                  "Date: ${DateFormat('dd MMM yyyy, hh:mm a').format(expense.date)}",
+              isUser: false,
+              timestamp: DateTime.now(),
+              expense: expense,
+            ));
+          });
+        } else {
+          // Only text extracted, no expense data found
+          setState(() {
+            _messages.add(ChatMessage(
+              text: "📝 Image processed but no expense data found.\n\n"
+                  "❌ Could not extract expense information from the image. "
+                  "Please try with a clearer image or add expense details manually.",
+              isUser: false,
+              timestamp: DateTime.now(),
+            ));
+          });
+        }
+      } else {
+        // Error processing image
+        setState(() {
+          _messages.add(ChatMessage(
+            text: "❌ Failed to process image: ${result?['error'] ?? 'Unknown error'}\n\n"
+                "Please try with a clearer image or add expense details manually.",
+            isUser: false,
+            timestamp: DateTime.now(),
+          ));
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _messages.add(ChatMessage(
+          text: "❌ Error uploading image: $e\nPlease try again.",
+          isUser: false,
+          timestamp: DateTime.now(),
+        ));
+      });
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+    _scrollToBottom();
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -174,6 +315,15 @@ class _ChatExpenseScreenState extends State<ChatExpenseScreen> {
             ),
             child: Row(
               children: [
+                // Image upload button
+                FloatingActionButton(
+                  onPressed: _isLoading ? null : _pickAndUploadImage,
+                  backgroundColor: Colors.blue[600],
+                  mini: true,
+                  heroTag: "image_upload",
+                  child: const Icon(Icons.camera_alt, color: Colors.white),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
@@ -200,6 +350,7 @@ class _ChatExpenseScreenState extends State<ChatExpenseScreen> {
                   onPressed: _isLoading ? null : _sendMessage,
                   backgroundColor: Colors.green[600],
                   mini: true,
+                  heroTag: "send_message",
                   child: const Icon(Icons.send, color: Colors.white),
                 ),
               ],
@@ -242,6 +393,31 @@ class _ChatExpenseScreenState extends State<ChatExpenseScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Show image if available
+                  if (message.imagePath != null) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        File(message.imagePath!),
+                        width: 200,
+                        height: 150,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 200,
+                            height: 150,
+                            color: Colors.grey[300],
+                            child: const Icon(
+                              Icons.broken_image,
+                              color: Colors.grey,
+                              size: 50,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   Text(
                     message.text,
                     style: TextStyle(
@@ -323,11 +499,13 @@ class ChatMessage {
   final bool isUser;
   final DateTime timestamp;
   final Expense? expense;
+  final String? imagePath;
 
   ChatMessage({
     required this.text,
     required this.isUser,
     required this.timestamp,
     this.expense,
+    this.imagePath,
   });
 }

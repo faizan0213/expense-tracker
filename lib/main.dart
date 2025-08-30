@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'screens/dashboard_screen.dart';
+import 'services/expense_service.dart';
+import 'services/api_test_service.dart';
+import 'config/api_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize local storage
+  print('🚀 Starting Smart Expense Tracker...');
+  await ExpenseService.initialize();
+  
+  // Test API connection
+  await ApiTestService.testExtractEndpoint();
   
   runApp(const SmartExpenseTracker());
 }
